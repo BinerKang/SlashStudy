@@ -6,6 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "Item.generated.h"
 
+class USphereComponent;
+
 UCLASS()
 class SLASHSTUDY_API AItem : public AActor
 {
@@ -27,6 +29,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sine Parameters")
 	float Amplitude = 1.f;
 
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UStaticMeshComponent> ItemMesh;
+
 	UFUNCTION(BlueprintPure) // BlueprintPure:pure function  BlueprintCallable: function
 	float TransformedSin();
 
@@ -36,6 +41,12 @@ protected:
 	template<typename T>
 	T Avg(T First, T Second);
 
+	UFUNCTION()
+	virtual void OnSphereOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	virtual void OnSphereOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
 private:
 
 	// BlueprintReadOnly: Expose to Event Graph,use this parameter meta = (AllowPrivateAccess = "true") for paivate var
@@ -43,7 +54,7 @@ private:
 	float RunningTime;
 
 	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UStaticMeshComponent> ItemMesh;
+	TObjectPtr<USphereComponent> Sphere;
 
 };
 

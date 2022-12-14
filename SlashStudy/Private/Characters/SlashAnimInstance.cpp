@@ -21,7 +21,8 @@ void USlashAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	Super::NativeUpdateAnimation(DeltaTime);
 	if (SlashChrMoveComp)
 	{
-		GroundSpeed = UKismetMathLibrary::VSizeXY(SlashChrMoveComp->Velocity);
-		IsFalling = SlashChrMoveComp->IsFalling();
+		this->GroundSpeed = UKismetMathLibrary::VSizeXY(SlashChrMoveComp->Velocity);
+		this->IsFalling = SlashChrMoveComp->IsFalling();
+		this->CharacterState = SlashChr->GetCharacterState();
 	}
 }

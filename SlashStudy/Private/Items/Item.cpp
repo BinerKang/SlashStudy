@@ -3,6 +3,8 @@
 
 #include "Items/Item.h"
 #include "SlashStudy/DebugMacros.h"
+#include "Components/SphereComponent.h"
+#include "Characters/SlashCharacter.h"
 
 AItem::AItem()
 {
@@ -11,30 +13,36 @@ AItem::AItem()
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
 	// replace  DefaultSceneRoot
 	SetRootComponent(ItemMesh);
+
+	Sphere = CreateDefaultSubobject<USphereComponent>(TEXT("SphereCollision"));
+	Sphere->SetupAttachment(GetRootComponent());
 }
 
 void AItem::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (GEngine)
-	{
-		// %s need *Fstring
-		FString Message = FString::Printf(TEXT("Item Name: %s"), *GetName());
-		GEngine->AddOnScreenDebugMessage(1, 60.f, FColor::Cyan, Message);
-		UE_LOG(LogTemp, Warning, TEXT(", Item Name: %s"), *GetName())
-	}
+	// Bind Callback Function to OnComponentBeginOverlap OnComponentEndOverlap 
+	Sphere->OnComponentBeginOverlap.AddDynamic(this, &AItem::OnSphereOverlapBegin);
+	Sphere->OnComponentEndOverlap.AddDynamic(this, &AItem::OnSphereOverlapEnd);
+	//if (GEngine)
+	//{
+	//	// %s need *Fstring
+	//	FString Message = FString::Printf(TEXT("Item Name: %s"), *GetName());
+	//	GEngine->AddOnScreenDebugMessage(1, 60.f, FColor::Cyan, Message);
+	//	UE_LOG(LogTemp, Warning, TEXT(", Item Name: %s"), *GetName())
+	//}
 
 	// SetActorLocation(FVector(0.f, 0.f, 300.f));
 	// SetActorRotation(FRotator(0.f, 45.f, 0.f));
 
-	FVector Location = GetActorLocation();
-	FVector Forward = GetActorForwardVector();
-	FVector EndLoc = Location + Forward * 100.f;
-	DRAW_SPHERE(Location);
+	//FVector Location = GetActorLocation();
+	//FVector Forward = GetActorForwardVector();
+	//FVector EndLoc = Location + Forward * 100.f;
+	//DRAW_SPHERE(Location);
 	// DRAW_LINE(Location, EndLoc);
 	// DRAW_POINT(EndLoc);
-	DRAW_VECTOR(Location, EndLoc);
+	//DRAW_VECTOR(Location, EndLoc);
 	
 }
 
@@ -46,6 +54,22 @@ float AItem::TransformedSin()
 float AItem::TransformedCos()
 {
 	return Amplitude * FMath::Cos(RunningTime * TimeConstant);
+}
+
+void AItem::OnSphereOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (ASlashCharacter* SlashChr = Cast<ASlashCharacter>(OtherActor))
+	{
+		SlashChr->SetOverlappingItem(this);
+	}
+}
+
+void AItem::OnSphereOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (ASlashCharacter* SlashChr = Cast<ASlashCharacter>(OtherActor))
+	{
+		SlashChr->SetOverlappingItem(nullptr);
+	}
 }
 
 // Called every frame
@@ -60,9 +84,11 @@ void AItem::Tick(float DeltaTime)
 	/*AddActorWorldOffset(FVector(MovementRate * DeltaTime, 0.f, 0.f));
 	AddActorWorldRotation(FRotator(0.f, RotationRate * DeltaTime, 0.f));*/
 
-	RunningTime += DeltaTime;
-	// float DeltaZ = Amplitude * FMath::Sin(RunningTime * TimeConstant);
-	// AddActorWorldOffset(FVector(0.f, 0.f, DeltaZ));
+	if (WasRecentlyRendered(0.1))
+	{
+		RunningTime += DeltaTime;
+		// AddActorWorldOffset(FVector(0.f, 0.f, TransformedSin()));
+	}
 
 	//DRAW_SPHERE_SingleFrame(GetActorLocation());
 	//DRAW_VECTOR_SingleFrame(GetActorLocation(), GetActorLocation() + GetActorForwardVector() * 100.f);
