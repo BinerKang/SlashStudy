@@ -8,6 +8,12 @@
 
 class USphereComponent;
 
+enum class EItemState : uint8 
+{
+	EIS_Hovering,
+	EIS_Equipped
+};
+
 UCLASS()
 class SLASHSTUDY_API AItem : public AActor
 {
@@ -23,11 +29,14 @@ protected:
 	virtual void BeginPlay() override;
 
 	// BlueprintReadWrite: Expose to Event Graph and can not private variable
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sine Parameters") // EditAnywhere EditDefaultsOnly EditInstanceOnly
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Custom|Sine Parameters") // EditAnywhere EditDefaultsOnly EditInstanceOnly
 	float TimeConstant = 5.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sine Parameters")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Custom|Sine Parameters")
 	float Amplitude = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Custom")
+	float RotationRate = 0.f;
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UStaticMeshComponent> ItemMesh;
@@ -41,20 +50,22 @@ protected:
 	template<typename T>
 	T Avg(T First, T Second);
 
+	EItemState ItemState = EItemState::EIS_Hovering;
+
 	UFUNCTION()
 	virtual void OnSphereOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
 	virtual void OnSphereOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USphereComponent> Sphere;
+
 private:
 
 	// BlueprintReadOnly: Expose to Event Graph,use this parameter meta = (AllowPrivateAccess = "true") for paivate var
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true")) //VisibleAnywhere VisibleDefaultsOnly VisibleInstanceOnly
 	float RunningTime;
-
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<USphereComponent> Sphere;
 
 };
 
