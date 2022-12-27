@@ -60,10 +60,6 @@ void ABreakableActor::GetHit(const FVector& ImpactPoint)
 
 void ABreakableActor::OnBreakEvent(const FChaosBreakEvent& BreakEvent)
 {
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, FString("Break..."));
-	}
 	this->SetLifeSpan(3.f);
 }
 
