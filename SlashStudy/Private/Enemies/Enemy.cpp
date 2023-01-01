@@ -2,12 +2,17 @@
 
 
 #include "Enemies/Enemy.h"
+#include "SlashStudy/DebugMacros.h"
 #include "Components/CapsuleComponent.h"
 #include "SlashStudy/DebugMacros.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "kismet/GameplayStatics.h"
+#include "Components/AttributeComponent.h"
+#include "HUD/HealthBarComponent.h"
+#include "AIController.h"
 
-// Sets default values
 AEnemy::AEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -18,23 +23,75 @@ AEnemy::AEnemy()
 	GetMesh()->SetGenerateOverlapEvents(true);
 
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-}
 
-// Called when the game starts or when spawned
+	HealthBarComponent = CreateDefaultSubobject<UHealthBarComponent>(TEXT("HealthBarComp"));
+	HealthBarComponent->SetupAttachment(GetRootComponent());
+
+	AttributeComponent = CreateDefaultSubobject<UAttributeComponent>(TEXT("AttributesComp"));
+
+	this->GetCharacterMovement()->bOrientRotationToMovement = true;
+	this->bUseControllerRotationYaw = false;
+}
+	
+
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	// Because Constructer Method had initilized. Not Check HealthBarComponent
+	HealthBarComponent->SetHealthPercent(1.f);
+	// hide Health Bar Widget
+	HealthBarComponent->SetVisibility(false);
+
+	this->EnemyController = Cast<AAIController>(GetController());
+	if (EnemyController && PatrolTarget)
+	{
+		FAIMoveRequest MoveRequest;
+		MoveRequest.SetGoalActor(PatrolTarget);
+		MoveRequest.SetAcceptanceRadius(15.f);
+		FNavPathSharedPtr NavPath;
+		EnemyController->MoveTo(MoveRequest, &NavPath);
+		/*for (auto& Point : NavPath->GetPathPoints())
+		{
+			DrawDebugSphere(GetWorld(), Point.Location, 12.f, 12.f, FColor::Green, false, 20.f);
+		}*/
+	}
 }
 
-// Called every frame
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	this->GroundSpeed = UKismetMathLibrary::VSizeXY(this->GetCharacterMovement()->Velocity);
+	if (this->CombatTarget)
+	{
+		if (!IsInTargetRange(CombatTarget, this->CombatRadius))
+		{
+			CombatTarget = nullptr;
+			HealthBarComponent->SetVisibility(false);
+		}
+	}
+	if (PatrolTarget && EnemyController && PatrolTargets.Num())
+	{
+		if (IsInTargetRange(PatrolTarget, PatrolRadius))
+		{
+			int32 RemoveNum = PatrolTargets.Remove(PatrolTarget);// Remove Current Patrol Target
+			// Random Pick A New Target
+			TObjectPtr<AActor> NewTarget = PatrolTargets[FMath::RandRange(0, PatrolTargets.Num() - 1)];
+			// if removed then readd Old Target
+			if (RemoveNum)
+			{
+				PatrolTargets.Add(PatrolTarget);
+			}
+			// Assign New Target to PatrolTarget
+			PatrolTarget = NewTarget;
+			// AI move to new Target
+			FAIMoveRequest MoveRequest;
+			MoveRequest.SetGoalActor(PatrolTarget);
+			MoveRequest.SetAcceptanceRadius(15.f);
+			EnemyController->MoveTo(MoveRequest);
+		}
+	}
 }
 
-// Called to bind functionality to input
 void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -54,9 +111,16 @@ void AEnemy::PlayHitReactMontage(const FName& SectionName)
 void AEnemy::GetHit(const FVector& ImpactPoint)
 {
 	// DRAW_SPHERE_Color(ImpactPoint, FColor::Orange);
+	if (AttributeComponent->IsAlive())
+	{
+		HealthBarComponent->SetVisibility(true);
+		DirectionalHitReact(ImpactPoint);
+	} 
+	else 
+	{
+		Die();
+	}
 	
-	DirectionalHitReact(ImpactPoint);
-
 	if (HitParticle)
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, ImpactPoint);
@@ -66,6 +130,14 @@ void AEnemy::GetHit(const FVector& ImpactPoint)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, HitSound, ImpactPoint);
 	}
+}
+
+float AEnemy::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	AttributeComponent->ReceiveDamage(Damage);
+	HealthBarComponent->SetHealthPercent(AttributeComponent->GetHealthPercent());
+	this->CombatTarget = EventInstigator->GetPawn();
+	return Damage;
 }
 
 void AEnemy::DirectionalHitReact(const FVector& ImpactPoint)
@@ -110,5 +182,55 @@ void AEnemy::DirectionalHitReact(const FVector& ImpactPoint)
 	UKismetSystemLibrary::DrawDebugArrow(this, GetActorLocation(), GetActorLocation() + Forward * 60.f, 5.f, FColor::Red, 5.f);
 	UKismetSystemLibrary::DrawDebugArrow(this, GetActorLocation(), GetActorLocation() + ToHit * 60.f, 5.f, FColor::Green, 5.f);
 	*/
+}
+
+void AEnemy::Die()
+{
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	this->HealthBarComponent->SetVisibility(false);
+	this->SetLifeSpan(5.f);
+	this->CombatTarget = nullptr;
+
+	TObjectPtr<UAnimInstance> AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && this->DeathMontage)
+	{
+		const int32 Index = FMath::RandRange(1, 6);
+		char* Section = "Death6";
+		this->DeathPose = EDeathPose::EAS_Death6;
+		switch (Index)
+		{
+		case 1:
+			Section = "Death1"; 
+			this->DeathPose = EDeathPose::EAS_Death1;
+			break;
+		case 2:
+			Section = "Death2"; 
+			this->DeathPose = EDeathPose::EAS_Death2;
+			break;
+		case 3:
+			Section = "Death3"; 
+			this->DeathPose = EDeathPose::EAS_Death3;
+			break;
+		case 4:
+			Section = "Death4"; 
+			this->DeathPose = EDeathPose::EAS_Death4;
+			break;
+		case 5:
+			Section = "Death5"; 
+			this->DeathPose = EDeathPose::EAS_Death5;
+			break;
+		default:
+			break;
+		}
+		AnimInstance->Montage_Play(this->DeathMontage);
+		AnimInstance->Montage_JumpToSection(FName(Section), this->DeathMontage);
+	}
+}
+
+bool AEnemy::IsInTargetRange(AActor* Target, float Radius)
+{
+	DRAW_SPHERE_SingleFrame(Target->GetActorLocation());
+	DRAW_SPHERE_SingleFrame(this->GetActorLocation());
+	return (Target->GetActorLocation() - this->GetActorLocation()).Length() <= Radius;
 }
 

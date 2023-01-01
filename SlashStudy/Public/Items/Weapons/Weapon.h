@@ -18,7 +18,7 @@ class SLASHSTUDY_API AWeapon : public AItem
 
 public:
 	AWeapon();
-	void Equip(USceneComponent* InParent, FName InSocketName);
+	void Equip(USceneComponent* InParent, FName InSocketName, AActor* NewOwner, APawn* NewInstigator);
 	void AttachMeshToSocket(USceneComponent* InParent, const FName& InSocketName);
 	
 	// Used by One hit per swing.
@@ -38,8 +38,11 @@ protected:
 
 
 private:
-	UPROPERTY(EditAnywhere, Category = "Custom|Equip Sound")
+	UPROPERTY(EditAnywhere, Category = "Custom|Sounds")
 	TObjectPtr<USoundBase> EquipSound;
+
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	float Damage = 20.f;
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UBoxComponent> WeaponBox;
@@ -49,6 +52,5 @@ private:
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USceneComponent> BoxTraceEnd;
-
 
 };
