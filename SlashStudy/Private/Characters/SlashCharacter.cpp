@@ -9,7 +9,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GroomComponent.h"
 #include "Items/Weapons/Weapon.h"
-#include "Components/BoxComponent.h"
+
+#include "SlashStudy/Tags.h"
+#include "SlashStudy/SocketNames.h"
 
 ASlashCharacter::ASlashCharacter()
 {
@@ -43,6 +45,8 @@ ASlashCharacter::ASlashCharacter()
 void ASlashCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	// Add Tag
+	this->Tags.Add(SLASH_CHARACTER_TAG);
 	// Add Input Mapping Context
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
@@ -84,7 +88,7 @@ void ASlashCharacter::EKeyPressed(const FInputActionValue& Value)
 	{
 		if (TObjectPtr<AWeapon> OverlappingWeapon = Cast<AWeapon>(OverlappingItem))
 		{
-			OverlappingWeapon->Equip(this->GetMesh(), FName(RIGHT_HAND_SOCKET), this, this);
+			OverlappingWeapon->Equip(this->GetMesh(), RIGHT_HAND_SOCKET, this, this);
 			this->CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
 			this->OverlappingItem = nullptr;
 			this->EquippedWeapon = OverlappingWeapon;
@@ -177,7 +181,7 @@ void ASlashCharacter::Arm()
 {
 	if (this->EquippedWeapon)
 	{
-		this->EquippedWeapon->AttachMeshToSocket(this->GetMesh(), FName(RIGHT_HAND_SOCKET));
+		this->EquippedWeapon->AttachMeshToSocket(this->GetMesh(), RIGHT_HAND_SOCKET);
 	}
 }
 
@@ -185,22 +189,13 @@ void ASlashCharacter::Disarm()
 {
 	if (this->EquippedWeapon)
 	{
-		this->EquippedWeapon->AttachMeshToSocket(this->GetMesh(), FName(SPINE_SOCKET));
+		this->EquippedWeapon->AttachMeshToSocket(this->GetMesh(), SPINE_SOCKET);
 	}
 }
 
 void ASlashCharacter::FinishEquipping()
 {
 	this->ActionState = EActionState::EAS_Unoccupied;
-}
-
-void ASlashCharacter::SetWeaponBoxCollisionEnabled(ECollisionEnabled::Type CollisionEnabled)
-{
-	if (EquippedWeapon && EquippedWeapon->GetWeaponBox())
-	{
-		EquippedWeapon->GetWeaponBox()->SetCollisionEnabled(CollisionEnabled);
-		EquippedWeapon->IgnoreActors.Empty();
-	}
 }
 
 void ASlashCharacter::Tick(float DeltaTime)

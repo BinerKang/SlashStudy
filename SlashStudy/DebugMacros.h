@@ -18,3 +18,8 @@
 		DrawDebugLine(GetWorld(), StartLoc, EndLoc, FColor::Red, false, -1.f, 0, 1.f); \
 		DrawDebugPoint(GetWorld(), EndLoc, 15.f, FColor::Red, false, -1.f); \
 	}
+
+#define PRINT_ON_SCREEN(Message) if (GEngine) \
+	{ \
+		GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Purple, Message); \
+	}

@@ -4,36 +4,43 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Interfaces/HitInterface.h"
 #include "Characters/CharacterTypes.h"
+#include "Characters/BaseCharacter.h"
 
 #include "Enemy.generated.h"
 
-class UAttributeComponent;
 class UHealthBarComponent;
 class AAIController;
+class UPawnSensingComponent;
+class AWeapon;
 
 UCLASS()
-class SLASHSTUDY_API AEnemy : public ACharacter, public IHitInterface
+class SLASHSTUDY_API AEnemy : public ABaseCharacter
 {
 	GENERATED_BODY()
 
 public:
 	AEnemy();
 	virtual void Tick(float DeltaTime) override;
+	void CheckPatrolTarget();
+	void CheckCombatTarget();
+	void MoveToTarget(AActor* Target, float AcceptanceRadius = 15.f);
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetHit(const FVector& ImpactPoint) override;
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-
-	void DirectionalHitReact(const FVector& ImpactPoint);
-	void Die();
 	bool IsInTargetRange(AActor* Target, float Radius);
+	void GoToChasing();
+	void GoToPatrolling();
+
+	virtual void Destroyed() override;
 
 protected:
 	virtual void BeginPlay() override;
 
+	virtual void Die() override;
+
 	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UAttributeComponent> AttributeComponent;
+	TObjectPtr<UPawnSensingComponent> PawnSensingComp;
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UHealthBarComponent> HealthBarComponent;
@@ -45,8 +52,10 @@ protected:
 	float GroundSpeed;
 
 	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
-	float CombatRadius = 500.f;
+	float CombatRadius = 800.f;
 
+	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
+	float AttackRadius = 150.f;
 	/**
 	* AI Navigation
 	*/
@@ -63,25 +72,32 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
 	float PatrolRadius = 200.f;
 
-	/**
-	* Play Montage Functions
-	*/
-	void PlayHitReactMontage(const FName& SectionName);
+	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
+	float PatrolWaitMinSecond = 5.f;
+
+	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
+	float PatrolWaitMaxSecond = 10.f;
+
+	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
+	float ChasingSpeed = 300.f;
+
+	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
+	float PatrollingSpeed = 125.f;
+
+	FTimerHandle PatrolWaitTimerHandle;
+	void PatrolTimerFinished();
+
+	UFUNCTION()
+	void OnSeePawn(APawn* Pawn);
+
+	UPROPERTY(VisibleAnywhere)
+	EEnemyState EnemyState = EEnemyState::EES_Patrolling;
+
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	TSubclassOf<AWeapon> WeaponClass;
 
 private:
-
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
-	TObjectPtr<UAnimMontage> HitReactMontage;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
-	TObjectPtr<UAnimMontage> DeathMontage;
-
-	UPROPERTY(EditAnywhere, Category = "Custom|Sounds")
-	TObjectPtr<USoundBase> HitSound;
-
-	UPROPERTY(EditAnywhere, Category = "Custom|Visual Effects")
-	TObjectPtr<UParticleSystem> HitParticle;
-
 	UPROPERTY()
 	TObjectPtr<AActor> CombatTarget;
+
 };

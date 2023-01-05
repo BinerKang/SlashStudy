@@ -6,10 +6,9 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "CharacterTypes.h"
-#include "SlashCharacter.generated.h"
+#include "BaseCharacter.h"
 
-#define SPINE_SOCKET "SpineSocket"
-#define RIGHT_HAND_SOCKET "RightHandSocket"
+#include "SlashCharacter.generated.h"
 
 class UInputMappingContext;
 class UInputAction;
@@ -17,10 +16,10 @@ class USpringArmComponent;
 class UCameraComponent;
 class UGroomComponent;
 class AItem;
-class AWeapon;
+
 
 UCLASS()
-class SLASHSTUDY_API ASlashCharacter : public ACharacter
+class SLASHSTUDY_API ASlashCharacter : public ABaseCharacter
 {
 	GENERATED_BODY()
 
@@ -28,32 +27,29 @@ public:
 	ASlashCharacter();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
 	FORCEINLINE void SetOverlappingItem(TObjectPtr<AItem> Item) { this->OverlappingItem = Item; }
 	FORCEINLINE ECharacterState GetCharacterState() const { return this->CharacterState; }
 
 protected:
 	virtual void BeginPlay() override;
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Custom|Input")
 	TObjectPtr<UInputMappingContext> SlashMappingContext;
 
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Custom|Input")
 	TObjectPtr<UInputAction> MoveAction;
 
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Custom|Input")
 	TObjectPtr<UInputAction> LookAction;
 
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Custom|Input")
 	TObjectPtr<UInputAction> JumpAction;
 
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Custom|Input")
 	TObjectPtr<UInputAction> EKeyAction;
 
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Custom|Input")
 	TObjectPtr<UInputAction> AttackAction;
-
-	UPROPERTY(VisibleAnywhere, Category = Weapon)
-	TObjectPtr<AWeapon> EquippedWeapon;
-
 
 	/** 
 	* Callback for Input
@@ -62,16 +58,14 @@ protected:
 	void Look(const FInputActionValue& Value);
 	void DoJump(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
-	void Attack(const FInputActionValue& Value);
+	virtual void Attack(const FInputActionValue& Value) override;
 
 	/**
 	* Play Montage Functions
 	*/
-	void PlayAttackMontage();
-
-	UFUNCTION(BlueprintCallable)
-	void AttackEnd();
-	bool CanAttack();
+	virtual void PlayAttackMontage() override;
+	virtual void AttackEnd() override;
+	virtual bool CanAttack() override;
 
 	void PlayEquipMontage(const FName& SectionName);
 	bool CanDisarm();
@@ -83,10 +77,6 @@ protected:
 	void Disarm();
 	UFUNCTION(BlueprintCallable)
 	void FinishEquipping();
-
-	UFUNCTION(BlueprintCallable)
-	void SetWeaponBoxCollisionEnabled(ECollisionEnabled::Type CollisionEnabled);
-
 
 private:
 	UPROPERTY(VisibleAnywhere)
@@ -107,16 +97,8 @@ private:
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
 	EActionState ActionState = EActionState::EAS_Unoccupied;
 
-	/**
-	* Animation Montages
-	*/
-	UPROPERTY(EditDefaultsOnly, Category = "Montages")
-	TObjectPtr<UAnimMontage> AttackMontage;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Montages")
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
 	TObjectPtr<UAnimMontage> EquipMontage;
-
-
 
 };
 
