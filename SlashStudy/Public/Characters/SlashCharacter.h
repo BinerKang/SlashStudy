@@ -28,6 +28,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual void GetHit(const FVector& ImpactPoint) override;
+
 	FORCEINLINE void SetOverlappingItem(TObjectPtr<AItem> Item) { this->OverlappingItem = Item; }
 	FORCEINLINE ECharacterState GetCharacterState() const { return this->CharacterState; }
 
@@ -63,7 +65,6 @@ protected:
 	/**
 	* Play Montage Functions
 	*/
-	virtual void PlayAttackMontage() override;
 	virtual void AttackEnd() override;
 	virtual bool CanAttack() override;
 

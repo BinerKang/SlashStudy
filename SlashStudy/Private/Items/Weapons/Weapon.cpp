@@ -9,6 +9,7 @@
 #include "Components/BoxComponent.h"
 #include "Interfaces/HitInterface.h"
 #include "NiagaraComponent.h"
+#include "SlashStudy/Tags.h"
 
 AWeapon::AWeapon()
 {
@@ -16,6 +17,7 @@ AWeapon::AWeapon()
 	WeaponBox->SetupAttachment(GetRootComponent());
 	WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+	// Pawn -->Ignore Capsule Component, Overlap Character's Mesh
 	WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 
 	this->ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -60,19 +62,34 @@ void AWeapon::AttachMeshToSocket(USceneComponent* InParent, const FName& InSocke
 	this->ItemMesh->AttachToComponent(InParent, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), InSocketName);
 }
 
-
-
-void AWeapon::OnSphereOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	Super::OnSphereOverlapBegin(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
-}
-
-void AWeapon::OnSphereOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	Super::OnSphereOverlapEnd(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex);
-}
-
 void AWeapon::OnBoxOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (IsSameActorType(OtherActor)) return;
+
+	FHitResult BoxHit;
+	BoxTrace(BoxHit);
+
+	if (BoxHit.GetActor())
+	{
+		if (IsSameActorType(BoxHit.GetActor())) return;
+
+		UGameplayStatics::ApplyDamage(BoxHit.GetActor(), Damage, GetInstigator()->GetController(), this, UDamageType::StaticClass());
+		if (TObjectPtr<IHitInterface> HitInterface = Cast<IHitInterface>(BoxHit.GetActor()))
+		{
+			// One hit per swing, BaseCharacter SetWeaponBoxCollisionEnabled function Empty IgnoreActors 
+			// Do not in AttackEnd function to Empty IgnoreActors not work for combo attack...
+			IgnoreActors.AddUnique(BoxHit.GetActor());
+			HitInterface->GetHit(BoxHit.ImpactPoint);
+		}
+	}
+}
+
+bool AWeapon::IsSameActorType(AActor* OtherActor)
+{
+	return GetOwner()->ActorHasTag(ENEMY_TAG) && OtherActor->ActorHasTag(ENEMY_TAG);
+}
+
+void AWeapon::BoxTrace(FHitResult& BoxHit)
 {
 	TArray<TObjectPtr<AActor>> ActorsToIgnore;
 	ActorsToIgnore.Add(this);
@@ -81,31 +98,17 @@ void AWeapon::OnBoxOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor
 		ActorsToIgnore.AddUnique(Actor);
 	}
 
-	FHitResult BoxHit;
-
 	UKismetSystemLibrary::BoxTraceSingle(
 		this,
 		BoxTraceStart->GetComponentLocation(),
 		BoxTraceEnd->GetComponentLocation(),
-		FVector(5.f, 5.f, 5.f),
+		BoxTraceExtend,
 		BoxTraceStart->GetComponentRotation(),
 		ETraceTypeQuery::TraceTypeQuery1,
 		false,
 		ActorsToIgnore,
-		// EDrawDebugTrace::ForDuration,
-		EDrawDebugTrace::None,
+		bShowBoxTraceDebug ? EDrawDebugTrace::ForDuration :	EDrawDebugTrace::None,
 		BoxHit,
 		true
 	);
-
-	if (BoxHit.GetActor())
-	{
-		UGameplayStatics::ApplyDamage(BoxHit.GetActor(), Damage, GetInstigator()->GetController(), this, UDamageType::StaticClass());
-		if (TObjectPtr<IHitInterface> HitInterface = Cast<IHitInterface>(BoxHit.GetActor()))
-		{
-			// One hit per swing
-			IgnoreActors.AddUnique(BoxHit.GetActor());
-			HitInterface->GetHit(BoxHit.ImpactPoint);
-		}
-	}
 }

@@ -21,46 +21,39 @@ class SLASHSTUDY_API AEnemy : public ABaseCharacter
 
 public:
 	AEnemy();
-	virtual void Tick(float DeltaTime) override;
-	void CheckPatrolTarget();
-	void CheckCombatTarget();
-	void MoveToTarget(AActor* Target, float AcceptanceRadius = 15.f);
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	virtual void GetHit(const FVector& ImpactPoint) override;
-	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-	bool IsInTargetRange(AActor* Target, float Radius);
-	void GoToChasing();
-	void GoToPatrolling();
 
+	/** <AActor> */
+	virtual void Tick(float DeltaTime) override;
+	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void Destroyed() override;
+	/** </AActor> */
+	
+	/** <APawn> */
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	/** </APawn> */
+
+	/** <IHitInterface> */
+	virtual void GetHit(const FVector& ImpactPoint) override;
+	/** </IHitInterface> */
 
 protected:
-	virtual void BeginPlay() override;
-
-	virtual void Die() override;
-
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UPawnSensingComponent> PawnSensingComp;
-
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UHealthBarComponent> HealthBarComponent;
-
 	UPROPERTY(BlueprintReadOnly)
-	EDeathPose DeathPose = EDeathPose::EDP_Alive;
+	TEnumAsByte<EDeathPose> DeathPose;
 
 	UPROPERTY(BlueprintReadOnly)
 	float GroundSpeed;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	EEnemyState EnemyState = EEnemyState::EES_Patrolling;
 
 	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
 	float CombatRadius = 800.f;
 
 	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
 	float AttackRadius = 150.f;
-	/**
-	* AI Navigation
-	*/
-	UPROPERTY()
-	TObjectPtr<AAIController> EnemyController;
+
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	float DeadLifeSpan = 8.f;
 
 	// Current Patrol Target
 	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
@@ -84,20 +77,67 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
 	float PatrollingSpeed = 125.f;
 
-	FTimerHandle PatrolWaitTimerHandle;
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	TSubclassOf<AWeapon> WeaponClass;
+
+	UPROPERTY(EditAnywhere, Category = "Custom|Combat")
+	float AttackMin = 0.5f;
+
+	UPROPERTY(EditAnywhere, Category = "Custom|Combat")
+	float AttackMax = 1.f;
+
+	/** <AActor> */
+	virtual void BeginPlay() override;
+	/** </AActor> */
+
+	/** <ABaseCharacter> */
+	virtual void Die() override;
+	virtual void Attack(const FInputActionValue& Value) override;
+	virtual int32 PlayDeathMontage() override;
+	virtual bool CanAttack() override;
+	virtual void AttackEnd() override;
+	virtual void HandleDamage(float DamageAmount) override;
+	/** </ABaseCharacter> */
+
+private:
+	/** AI Behavior */
+	void CheckPatrolTarget();
+	void CheckCombatTarget();
+	void MoveToTarget(AActor* Target, float AcceptanceRadius = 50.f);
+	bool IsInTargetRange(AActor* Target, float Radius);
+	void StartAttackTimer();
 	void PatrolTimerFinished();
+	void HideHealthBar();
+	void ShowHealthBar();
+	void LoseInterest();
+	void GoToChasing();
+	void GoToPatrolling();
+	bool IsOutsideCombatRadius();
+	bool IsOutsideAttackRadius();
+	bool IsInsideAttackRadius();
+	bool IsChasing();
+	bool IsAttacking();
+	bool IsEngaged();
+	void ClearPatrolWaitTimer();
+	void ClearAttackTimer();
+	void Attack();
 
 	UFUNCTION()
 	void OnSeePawn(APawn* Pawn);
 
+	FTimerHandle PatrolWaitTimerHandle;
+	FTimerHandle AttackTimer;
+
 	UPROPERTY(VisibleAnywhere)
-	EEnemyState EnemyState = EEnemyState::EES_Patrolling;
+	TObjectPtr<UPawnSensingComponent> PawnSensingComp;
 
-	UPROPERTY(EditAnywhere, Category = "Custom")
-	TSubclassOf<AWeapon> WeaponClass;
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UHealthBarComponent> HealthBarComponent;
 
-private:
+	UPROPERTY()
+	TObjectPtr<AAIController> EnemyController;
+
 	UPROPERTY()
 	TObjectPtr<AActor> CombatTarget;
-
+	
 };

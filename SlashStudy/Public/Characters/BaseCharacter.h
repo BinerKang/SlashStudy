@@ -33,12 +33,13 @@ protected:
 
 	virtual void GetHit(const FVector& ImpactPoint) override;
 
-	/**
-	* Play Montage Functions
-	*/
+	bool IsAlive();
+
 	void PlayHitReactMontage(const FName& SectionName);
 	void DirectionalHitReact(const FVector& ImpactPoint);
-	virtual void PlayAttackMontage();
+	void PlayHitSound(const FVector& ImpactPoint);
+	void SpawnHitParticle(const FVector& ImpactPoint);
+	virtual void HandleDamage(float DamageAmount);
 
 	UFUNCTION(BlueprintCallable)
 	virtual void AttackEnd();
@@ -55,10 +56,21 @@ protected:
 	TObjectPtr<UAnimMontage> AttackMontage;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
+	TArray<FName> AttackMontageSections;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
 	TObjectPtr<UAnimMontage> HitReactMontage;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
 	TObjectPtr<UAnimMontage> DeathMontage;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
+	TArray<FName> DeathMontageSections;
+
+	void PlayMontageSection(UAnimMontage* Montage, const FName& SectionName);
+	int32 PlayMontageRandomSection(UAnimMontage* Montage, const TArray<FName>& SectionNames);
+	void PlayAttackMontage();
+	virtual int32 PlayDeathMontage();
 
 	UPROPERTY(EditAnywhere, Category = "Custom|Sounds")
 	TObjectPtr<USoundBase> HitSound;

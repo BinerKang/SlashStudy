@@ -31,10 +31,12 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	virtual void OnSphereOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
-	virtual void OnSphereOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) override;
 	UFUNCTION()
 	void OnBoxOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	bool IsSameActorType(AActor* OtherActor);
+
+	void BoxTrace(FHitResult& BoxHit);
 
 
 private:
@@ -43,6 +45,12 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Custom")
 	float Damage = 20.f;
+
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	FVector BoxTraceExtend = FVector(5.f);
+
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	bool bShowBoxTraceDebug = false;
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UBoxComponent> WeaponBox;

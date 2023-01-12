@@ -19,6 +19,12 @@ ASlashCharacter::ASlashCharacter()
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 	
+	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	GetMesh()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap);
+	GetMesh()->SetGenerateOverlapEvents(true);
+
 	// Add SpringArm And Camera
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetRootComponent());
@@ -46,7 +52,7 @@ void ASlashCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	// Add Tag
-	this->Tags.Add(SLASH_CHARACTER_TAG);
+	this->Tags.Add(ENGAGEABLE_TARGET_TAG);
 	// Add Input Mapping Context
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
@@ -115,30 +121,12 @@ void ASlashCharacter::Attack(const FInputActionValue& Value)
 {
 	if (Value.Get<bool>())
 	{
+		Super::Attack(Value);
 		if (CanAttack())
 		{
 			ActionState = EActionState::EAS_Attacking;
 			PlayAttackMontage();
 		}
-	}
-}
-
-void ASlashCharacter::PlayAttackMontage()
-{
-	TObjectPtr<UAnimInstance> AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && AttackMontage)
-	{
-		AnimInstance->Montage_Play(AttackMontage);
-		FName SectionName;
-		const int32 i = FMath::RandRange(1, 2);
-		switch (i)
-		{
-		case 1: SectionName = FName("Attack1"); break;
-		case 2: SectionName = FName("Attack2"); break;
-		default:
-			break;
-		}
-		AnimInstance->Montage_JumpToSection(SectionName, AttackMontage);
 	}
 }
 
@@ -215,5 +203,11 @@ void ASlashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 		EnhancedInputComp->BindAction(EKeyAction, ETriggerEvent::Triggered, this, &ASlashCharacter::EKeyPressed);
 		EnhancedInputComp->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ASlashCharacter::Attack);
 	}
+}
+
+void ASlashCharacter::GetHit(const FVector& ImpactPoint)
+{
+	PlayHitSound(ImpactPoint);
+	SpawnHitParticle(ImpactPoint);
 }
 

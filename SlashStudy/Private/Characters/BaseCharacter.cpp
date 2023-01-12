@@ -5,6 +5,7 @@
 #include "Items/Weapons/Weapon.h"
 #include "Components/BoxComponent.h"
 #include "Components/AttributeComponent.h"
+#include "kismet/GameplayStatics.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -29,6 +30,11 @@ void ABaseCharacter::Die()
 
 void ABaseCharacter::GetHit(const FVector& ImpactPoint)
 {
+}
+
+bool ABaseCharacter::IsAlive()
+{
+	return AttributeComponent && AttributeComponent->IsAlive();
 }
 
 void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
@@ -85,8 +91,55 @@ void ABaseCharacter::DirectionalHitReact(const FVector& ImpactPoint)
 	*/
 }
 
+void ABaseCharacter::PlayHitSound(const FVector& ImpactPoint)
+{
+	if (HitParticle)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, ImpactPoint);
+	}
+}
+
+void ABaseCharacter::SpawnHitParticle(const FVector& ImpactPoint)
+{
+	if (HitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HitSound, ImpactPoint);
+	}
+}
+
+void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& SectionName)
+{
+	TObjectPtr<UAnimInstance> AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && Montage)
+	{
+		AnimInstance->Montage_Play(Montage);
+		AnimInstance->Montage_JumpToSection(SectionName, Montage);
+	}
+}
+
+int32 ABaseCharacter::PlayMontageRandomSection(UAnimMontage* Montage, const TArray<FName>& SectionNames)
+{
+	if (SectionNames.Num() < 0) return -1;
+	int32 i = FMath::RandRange(0, SectionNames.Num() - 1);
+	PlayMontageSection(Montage, SectionNames[i]);
+	return i;
+}
+
 void ABaseCharacter::PlayAttackMontage()
 {
+	PlayMontageRandomSection(AttackMontage, AttackMontageSections);	
+}
+
+int32 ABaseCharacter::PlayDeathMontage()
+{
+	return PlayMontageRandomSection(DeathMontage, DeathMontageSections);
+}
+
+void ABaseCharacter::HandleDamage(float DamageAmount)
+{
+	if (AttributeComponent) {
+		AttributeComponent->ReceiveDamage(DamageAmount);
+	}
 }
 
 void ABaseCharacter::AttackEnd()
