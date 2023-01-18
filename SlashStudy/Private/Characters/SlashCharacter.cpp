@@ -92,7 +92,7 @@ void ASlashCharacter::EKeyPressed(const FInputActionValue& Value)
 {
 	if (Value.Get<bool>())
 	{
-		if (TObjectPtr<AWeapon> OverlappingWeapon = Cast<AWeapon>(OverlappingItem))
+		if (AWeapon* OverlappingWeapon = Cast<AWeapon>(OverlappingItem))
 		{
 			OverlappingWeapon->Equip(this->GetMesh(), RIGHT_HAND_SOCKET, this, this);
 			this->CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
@@ -143,7 +143,7 @@ bool ASlashCharacter::CanAttack()
 
 void ASlashCharacter::PlayEquipMontage(const FName& SectionName)
 {
-	TObjectPtr<UAnimInstance> AnimInstance = GetMesh()->GetAnimInstance();
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && EquipMontage)
 	{
 		this->ActionState = EActionState::EAS_Equipping;
@@ -186,6 +186,11 @@ void ASlashCharacter::FinishEquipping()
 	this->ActionState = EActionState::EAS_Unoccupied;
 }
 
+void ASlashCharacter::HitReactionEnd()
+{
+	ActionState = EActionState::EAS_Unoccupied;
+}
+
 void ASlashCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -195,7 +200,7 @@ void ASlashCharacter::Tick(float DeltaTime)
 void ASlashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	if (TObjectPtr<UEnhancedInputComponent> EnhancedInputComp = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
+	if (UEnhancedInputComponent* EnhancedInputComp = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		EnhancedInputComp->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASlashCharacter::Move);
 		EnhancedInputComp->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASlashCharacter::Look);
@@ -205,9 +210,11 @@ void ASlashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	}
 }
 
-void ASlashCharacter::GetHit(const FVector& ImpactPoint)
+void ASlashCharacter::GetHit(const FVector& ImpactPoint, AActor* Hitter)
 {
-	PlayHitSound(ImpactPoint);
-	SpawnHitParticle(ImpactPoint);
+	ActionState = EActionState::EAS_HitReaction;
+	// if attacking GetHit will broken attack, disable box collision function not call, so call function here.
+	SetWeaponBoxCollisionEnabled(ECollisionEnabled::NoCollision);
+	Super::GetHit(ImpactPoint, Hitter);
 }
 

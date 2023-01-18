@@ -28,8 +28,16 @@ void ABaseCharacter::Die()
 {
 }
 
-void ABaseCharacter::GetHit(const FVector& ImpactPoint)
+void ABaseCharacter::GetHit(const FVector& ImpactPoint, AActor* Hitter)
 {
+	if (IsAlive() && Hitter)
+	{
+		DirectionalHitReact(Hitter->GetActorLocation());
+	}
+	else Die();
+
+	PlayHitSound(ImpactPoint);
+	SpawnHitParticle(ImpactPoint);
 }
 
 bool ABaseCharacter::IsAlive()
@@ -39,7 +47,7 @@ bool ABaseCharacter::IsAlive()
 
 void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
 {
-	TObjectPtr<UAnimInstance> AnimInstance = GetMesh()->GetAnimInstance();
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && HitReactMontage)
 	{
 		AnimInstance->Montage_Play(HitReactMontage);
@@ -109,7 +117,7 @@ void ABaseCharacter::SpawnHitParticle(const FVector& ImpactPoint)
 
 void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& SectionName)
 {
-	TObjectPtr<UAnimInstance> AnimInstance = GetMesh()->GetAnimInstance();
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && Montage)
 	{
 		AnimInstance->Montage_Play(Montage);

@@ -22,7 +22,7 @@ public:
 	void AttachMeshToSocket(USceneComponent* InParent, const FName& InSocketName);
 	
 	// Used by One hit per swing.
-	TArray<TObjectPtr<AActor>> IgnoreActors;
+	TArray<AActor*> IgnoreActors;
 	/**
 	* Getter and Setter
 	*/

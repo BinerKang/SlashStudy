@@ -31,7 +31,7 @@ protected:
 
 	virtual void Die();
 
-	virtual void GetHit(const FVector& ImpactPoint) override;
+	virtual void GetHit(const FVector& ImpactPoint, AActor* Hitter) override;
 
 	bool IsAlive();
 

@@ -74,12 +74,12 @@ void AWeapon::OnBoxOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor
 		if (IsSameActorType(BoxHit.GetActor())) return;
 
 		UGameplayStatics::ApplyDamage(BoxHit.GetActor(), Damage, GetInstigator()->GetController(), this, UDamageType::StaticClass());
-		if (TObjectPtr<IHitInterface> HitInterface = Cast<IHitInterface>(BoxHit.GetActor()))
+		if (IHitInterface* HitInterface = Cast<IHitInterface>(BoxHit.GetActor()))
 		{
 			// One hit per swing, BaseCharacter SetWeaponBoxCollisionEnabled function Empty IgnoreActors 
 			// Do not in AttackEnd function to Empty IgnoreActors not work for combo attack...
 			IgnoreActors.AddUnique(BoxHit.GetActor());
-			HitInterface->GetHit(BoxHit.ImpactPoint);
+			HitInterface->GetHit(BoxHit.ImpactPoint, GetOwner());
 		}
 	}
 }
@@ -91,9 +91,9 @@ bool AWeapon::IsSameActorType(AActor* OtherActor)
 
 void AWeapon::BoxTrace(FHitResult& BoxHit)
 {
-	TArray<TObjectPtr<AActor>> ActorsToIgnore;
+	TArray<AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(this);
-	for (TObjectPtr<AActor> Actor : IgnoreActors)
+	for (AActor* Actor : IgnoreActors)
 	{
 		ActorsToIgnore.AddUnique(Actor);
 	}

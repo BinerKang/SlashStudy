@@ -102,7 +102,7 @@ void AEnemy::CheckPatrolTarget()
 		{
 			int32 RemovedNum = PatrolTargets.Remove(PatrolTarget);// Remove Current Patrol Target
 			// Random Pick A New Target
-			TObjectPtr<AActor> NewTarget = PatrolTargets[FMath::RandRange(0, PatrolTargets.Num() - 1)];
+			AActor* NewTarget = PatrolTargets[FMath::RandRange(0, PatrolTargets.Num() - 1)];
 			// if removed then add Old Target back.
 			if (RemovedNum)
 			{
@@ -186,18 +186,12 @@ void AEnemy::LoseInterest()
 	HideHealthBar();
 }
 
-void AEnemy::GetHit(const FVector& ImpactPoint)
+void AEnemy::GetHit(const FVector& ImpactPoint, AActor* Hitter)
 {
 	// DRAW_SPHERE_Color(ImpactPoint, FColor::Orange);
-	if (IsAlive())
-	{
-		ShowHealthBar();
-		DirectionalHitReact(ImpactPoint);
-	} 
-	else Die();
-	
-	PlayHitSound(ImpactPoint);
-	SpawnHitParticle(ImpactPoint);
+	Super::GetHit(ImpactPoint, Hitter);
+	ClearPatrolWaitTimer();
+	if (IsAlive()) ShowHealthBar();
 }
 
 float AEnemy::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -217,6 +211,7 @@ void AEnemy::Die()
 	this->CombatTarget = nullptr;
 	this->PatrolTarget = nullptr;
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SetWeaponBoxCollisionEnabled(ECollisionEnabled::NoCollision);
 	HideHealthBar();
 	this->SetLifeSpan(DeadLifeSpan);
 	PlayDeathMontage();
