@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "Interfaces/HitInterface.h"
+#include "Characters/CharacterTypes.h"
 
 #include "BaseCharacter.generated.h"
 
@@ -23,6 +24,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SetWeaponBoxCollisionEnabled(ECollisionEnabled::Type CollisionEnabled);
+
+	FORCEINLINE EDeathPose GetDeathPose() const { return this->DeathPose; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -67,10 +70,24 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
 	TArray<FName> DeathMontageSections;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
+	TObjectPtr<UAnimMontage> DodgeMontage;
+
+	UPROPERTY(BlueprintReadOnly)
+	TObjectPtr<AActor> CombatTarget;
+
+	UFUNCTION(BlueprintCallable)
+	FVector GetTranslationWarp();
+
+	UFUNCTION(BlueprintCallable)
+	FVector GetRotationWarp();
+
 	void PlayMontageSection(UAnimMontage* Montage, const FName& SectionName);
 	int32 PlayMontageRandomSection(UAnimMontage* Montage, const TArray<FName>& SectionNames);
 	void PlayAttackMontage();
-	virtual int32 PlayDeathMontage();
+	void StopAttackMontage();
+	void PlayDodgeMontage();
+	virtual void PlayDeathMontage();
 
 	UPROPERTY(EditAnywhere, Category = "Custom|Sounds")
 	TObjectPtr<USoundBase> HitSound;
@@ -81,5 +98,12 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UAttributeComponent> AttributeComponent;
 
+	UPROPERTY(EditAnywhere, Category = "Custom|Combat")
+	double WarpTargetDistance = 75.f;
 
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	bool bNeedPhysicalWhenDie = false;
+
+	UPROPERTY(BlueprintReadOnly)
+	TEnumAsByte<EDeathPose> DeathPose;
 };

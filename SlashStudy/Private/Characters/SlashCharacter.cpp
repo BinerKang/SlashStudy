@@ -9,6 +9,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GroomComponent.h"
 #include "Items/Weapons/Weapon.h"
+#include "Components/AttributeComponent.h"
+#include "HUD/SlashHUD.h"
+#include "HUD/SlashOverlay.h"
 
 #include "SlashStudy/Tags.h"
 #include "SlashStudy/SocketNames.h"
@@ -46,6 +49,9 @@ ASlashCharacter::ASlashCharacter()
 	Eyebrows = CreateDefaultSubobject<UGroomComponent>(TEXT("Eyebrows"));
 	Eyebrows->SetupAttachment(GetMesh());
 	Eyebrows->AttachmentName = FString("head");
+
+	HairMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HairMesh"));
+	HairMesh->SetupAttachment(GetMesh());
 }
 
 void ASlashCharacter::BeginPlay()
@@ -53,13 +59,53 @@ void ASlashCharacter::BeginPlay()
 	Super::BeginPlay();
 	// Add Tag
 	this->Tags.Add(ENGAGEABLE_TARGET_TAG);
-	// Add Input Mapping Context
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
+		// Add Input Mapping Context
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
 			Subsystem->AddMappingContext(SlashMappingContext, 0);
 		}
+
+		InitializeSlashOverlay(PlayerController);
+	}
+
+}
+
+void ASlashCharacter::InitializeSlashOverlay(APlayerController* PlayerController)
+{
+	if (ASlashHUD* SlashHUD = Cast<ASlashHUD>(PlayerController->GetHUD()))
+	{
+		SlashOverlay = SlashHUD->GetSlashOverlay();
+		if (SlashOverlay && AttributeComponent)
+		{
+			SlashOverlay->SetHealthBarPercent(AttributeComponent->GetHealthPercent());
+			SlashOverlay->SetStaminaBarPercent(1.f);
+			SlashOverlay->SetGoldCount(0);
+			SlashOverlay->SetSoulsCount(0);
+		}
+	}
+}
+
+void ASlashCharacter::Die()
+{
+	Super::Die();
+	ActionState = EActionState::EAS_Dead;
+	DisableMeshCollision();
+}
+
+float ASlashCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	HandleDamage(Damage);
+	SetHUDHealth();
+	return Damage;
+}
+
+void ASlashCharacter::SetHUDHealth()
+{
+	if (SlashOverlay && AttributeComponent)
+	{
+		SlashOverlay->SetHealthBarPercent(AttributeComponent->GetHealthPercent());
 	}
 }
 
@@ -84,8 +130,15 @@ void ASlashCharacter::DoJump(const FInputActionValue& Value)
 {
 	if (Value.Get<bool>())
 	{
-		ACharacter::Jump();
+		if (IsUnoccupied()) {
+			ACharacter::Jump();
+		}
 	}
+}
+
+bool ASlashCharacter::IsUnoccupied()
+{
+	return ActionState == EActionState::EAS_Unoccupied;
 }
 
 void ASlashCharacter::EKeyPressed(const FInputActionValue& Value)
@@ -94,7 +147,7 @@ void ASlashCharacter::EKeyPressed(const FInputActionValue& Value)
 	{
 		if (AWeapon* OverlappingWeapon = Cast<AWeapon>(OverlappingItem))
 		{
-			OverlappingWeapon->Equip(this->GetMesh(), RIGHT_HAND_SOCKET, this, this);
+			OverlappingWeapon->Equip(this->GetMesh(), WEAPON_SOCKET, this, this);
 			this->CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
 			this->OverlappingItem = nullptr;
 			this->EquippedWeapon = OverlappingWeapon;
@@ -126,6 +179,21 @@ void ASlashCharacter::Attack(const FInputActionValue& Value)
 		{
 			ActionState = EActionState::EAS_Attacking;
 			PlayAttackMontage();
+		}
+	}
+}
+
+void ASlashCharacter::Dodge(const FInputActionValue& Value)
+{
+	if (Value.Get<bool>())
+	{
+		if (!IsUnoccupied()) return;
+		if (AttributeComponent && AttributeComponent->HasEnoughDodgeStamina())
+		{
+			ActionState = EActionState::EAS_Dodge;
+			AttributeComponent->UseDodgeStamina();
+			if (SlashOverlay) SlashOverlay->SetStaminaBarPercent(AttributeComponent->GetStaminaPercent());
+			PlayDodgeMontage();
 		}
 	}
 }
@@ -169,7 +237,7 @@ void ASlashCharacter::Arm()
 {
 	if (this->EquippedWeapon)
 	{
-		this->EquippedWeapon->AttachMeshToSocket(this->GetMesh(), RIGHT_HAND_SOCKET);
+		this->EquippedWeapon->AttachMeshToSocket(this->GetMesh(), WEAPON_SOCKET);
 	}
 }
 
@@ -191,10 +259,24 @@ void ASlashCharacter::HitReactionEnd()
 	ActionState = EActionState::EAS_Unoccupied;
 }
 
+void ASlashCharacter::DodgeEnd()
+{
+	ActionState = EActionState::EAS_Unoccupied;
+}
+
+void ASlashCharacter::DisableMeshCollision()
+{
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
 void ASlashCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	if (AttributeComponent && SlashOverlay)
+	{
+		AttributeComponent->RegenStamina(DeltaTime);
+		SlashOverlay->SetStaminaBarPercent(AttributeComponent->GetStaminaPercent());
+	}
 }
 
 void ASlashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -207,6 +289,7 @@ void ASlashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 		EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ASlashCharacter::DoJump);
 		EnhancedInputComp->BindAction(EKeyAction, ETriggerEvent::Triggered, this, &ASlashCharacter::EKeyPressed);
 		EnhancedInputComp->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ASlashCharacter::Attack);
+		EnhancedInputComp->BindAction(DodgeAction, ETriggerEvent::Triggered, this, &ASlashCharacter::Dodge);
 	}
 }
 
@@ -217,4 +300,28 @@ void ASlashCharacter::GetHit(const FVector& ImpactPoint, AActor* Hitter)
 	SetWeaponBoxCollisionEnabled(ECollisionEnabled::NoCollision);
 	Super::GetHit(ImpactPoint, Hitter);
 }
+
+void ASlashCharacter::SetOverlappingItem(AItem* Item)
+{
+	this->OverlappingItem = Item;
+}
+
+void ASlashCharacter::AddSouls(int32 SoulCount)
+{
+	if (AttributeComponent && SlashOverlay)
+	{
+		AttributeComponent->AddSouls(SoulCount);
+		SlashOverlay->SetSoulsCount(AttributeComponent->GetSouls());
+	}
+}
+
+void ASlashCharacter::AddGold(int32 GoldCount)
+{
+	if (AttributeComponent && SlashOverlay)
+	{
+		AttributeComponent->AddGold(GoldCount);
+		SlashOverlay->SetGoldCount(AttributeComponent->GetGold());
+	}
+}
+
 

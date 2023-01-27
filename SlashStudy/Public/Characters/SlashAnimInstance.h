@@ -34,7 +34,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
 	bool IsFalling;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement | CharacterState")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	ECharacterState CharacterState;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	EActionState ActionState;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	TEnumAsByte<EDeathPose> DeathPose;
 
 };

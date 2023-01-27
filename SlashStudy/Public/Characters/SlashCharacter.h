@@ -7,6 +7,7 @@
 #include "InputActionValue.h"
 #include "CharacterTypes.h"
 #include "BaseCharacter.h"
+#include "Interfaces/PickupInterface.h"
 
 #include "SlashCharacter.generated.h"
 
@@ -16,10 +17,11 @@ class USpringArmComponent;
 class UCameraComponent;
 class UGroomComponent;
 class AItem;
-
+class ASoul;
+class USlashOverlay;
 
 UCLASS()
-class SLASHSTUDY_API ASlashCharacter : public ABaseCharacter
+class SLASHSTUDY_API ASlashCharacter : public ABaseCharacter, public IPickupInterface
 {
 	GENERATED_BODY()
 
@@ -29,12 +31,19 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual void GetHit(const FVector& ImpactPoint, AActor* Hitter) override;
-
-	FORCEINLINE void SetOverlappingItem(TObjectPtr<AItem> Item) { this->OverlappingItem = Item; }
+	virtual void SetOverlappingItem(AItem* Item) override;
+	virtual void AddSouls(int32 SoulCount) override;
+	virtual void AddGold(int32 GoldCount) override;
+	
 	FORCEINLINE ECharacterState GetCharacterState() const { return this->CharacterState; }
+	FORCEINLINE EActionState GetActionState() const { return this->ActionState; }
 
 protected:
 	virtual void BeginPlay() override;
+	void InitializeSlashOverlay(APlayerController* PlayerController);
+
+	virtual void Die() override;
+
 	UPROPERTY(EditAnywhere, Category = "Custom|Input")
 	TObjectPtr<UInputMappingContext> SlashMappingContext;
 
@@ -53,6 +62,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Custom|Input")
 	TObjectPtr<UInputAction> AttackAction;
 
+	UPROPERTY(EditAnywhere, Category = "Custom|Input")
+	TObjectPtr<UInputAction> DodgeAction;
+
+	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	void SetHUDHealth();
+
 	/** 
 	* Callback for Input
 	*/
@@ -61,6 +77,7 @@ protected:
 	void DoJump(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
 	virtual void Attack(const FInputActionValue& Value) override;
+	void Dodge(const FInputActionValue& Value);
 
 	/**
 	* Play Montage Functions
@@ -71,6 +88,7 @@ protected:
 	void PlayEquipMontage(const FName& SectionName);
 	bool CanDisarm();
 	bool CanArm();
+	bool IsUnoccupied();
 
 	UFUNCTION(BlueprintCallable)
 	void Arm();
@@ -81,6 +99,9 @@ protected:
 
 	UFUNCTION(BlueprintCallable)
 	void HitReactionEnd();
+
+	UFUNCTION(BlueprintCallable)
+	void DodgeEnd();
 
 private:
 	UPROPERTY(VisibleAnywhere)
@@ -95,6 +116,9 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UGroomComponent> Eyebrows;
 
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USkeletalMeshComponent> HairMesh;
+
 	UPROPERTY(VisibleInstanceOnly)
 	TObjectPtr<AItem> OverlappingItem;
 
@@ -104,5 +128,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Montages")
 	TObjectPtr<UAnimMontage> EquipMontage;
 
+	UPROPERTY()
+	TObjectPtr<USlashOverlay> SlashOverlay;
+
+	void DisableMeshCollision();
 };
 

@@ -2,7 +2,7 @@
 
 
 #include "Items/Treasure.h"
-#include "kismet/GameplayStatics.h"
+#include "Interfaces/PickupInterface.h"
 
 ATreasure::ATreasure()
 {
@@ -10,9 +10,10 @@ ATreasure::ATreasure()
 
 void ATreasure::OnSphereOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (PickupSound)
+	if (IPickupInterface* IPickup = Cast<IPickupInterface>(OtherActor))
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
+		IPickup->AddGold(this->Gold);
+		SpawnPickupSound();
+		Destroy();
 	}
-	Destroy();
 }

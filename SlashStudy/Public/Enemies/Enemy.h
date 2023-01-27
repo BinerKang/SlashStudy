@@ -13,6 +13,7 @@ class UHealthBarComponent;
 class AAIController;
 class UPawnSensingComponent;
 class AWeapon;
+class ASoul;
 
 UCLASS()
 class SLASHSTUDY_API AEnemy : public ABaseCharacter
@@ -37,8 +38,6 @@ public:
 	/** </IHitInterface> */
 
 protected:
-	UPROPERTY(BlueprintReadOnly)
-	TEnumAsByte<EDeathPose> DeathPose;
 
 	UPROPERTY(BlueprintReadOnly)
 	float GroundSpeed;
@@ -51,6 +50,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
 	float AttackRadius = 150.f;
+
+	UPROPERTY(EditAnywhere, Category = "Custom|AI Navigation")
+	float AcceptanceRadius = 50.f;
 
 	UPROPERTY(EditAnywhere, Category = "Custom")
 	float DeadLifeSpan = 8.f;
@@ -80,6 +82,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Custom")
 	TSubclassOf<AWeapon> WeaponClass;
 
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	TSubclassOf<ASoul> SoulClass;
+
 	UPROPERTY(EditAnywhere, Category = "Custom|Combat")
 	float AttackMin = 0.5f;
 
@@ -92,8 +97,8 @@ protected:
 
 	/** <ABaseCharacter> */
 	virtual void Die() override;
+	void SpawnSoulActor();
 	virtual void Attack(const FInputActionValue& Value) override;
-	virtual int32 PlayDeathMontage() override;
 	virtual bool CanAttack() override;
 	virtual void AttackEnd() override;
 	virtual void HandleDamage(float DamageAmount) override;
@@ -103,7 +108,7 @@ private:
 	/** AI Behavior */
 	void CheckPatrolTarget();
 	void CheckCombatTarget();
-	void MoveToTarget(AActor* Target, float AcceptanceRadius = 50.f);
+	void MoveToTarget(AActor* Target);
 	bool IsInTargetRange(AActor* Target, float Radius);
 	void StartAttackTimer();
 	void PatrolTimerFinished();
@@ -136,8 +141,5 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<AAIController> EnemyController;
-
-	UPROPERTY()
-	TObjectPtr<AActor> CombatTarget;
 	
 };

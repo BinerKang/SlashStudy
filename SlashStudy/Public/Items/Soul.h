@@ -4,24 +4,34 @@
 
 #include "CoreMinimal.h"
 #include "Items/Item.h"
-#include "Treasure.generated.h"
+#include "Soul.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class SLASHSTUDY_API ATreasure : public AItem
+class SLASHSTUDY_API ASoul : public AItem
 {
 	GENERATED_BODY()
 	
 public:
-	ATreasure();
+	virtual void Tick(float DeltaTime) override;
+
+	FORCEINLINE void SetSouls(int32 Value) { Souls = Value; }
 
 protected:
+	virtual void BeginPlay() override;
 	virtual void OnSphereOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
 
 private:
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	int32 Souls = 1;
 
 	UPROPERTY(EditAnywhere, Category = "Custom")
-	int32 Gold = 5;
+	float DistanceToFloor = 100.f;
+
+	UPROPERTY(EditAnywhere, Category = "Custom")
+	float DriftSpeedPerSecond = 20.f;
+
+	float DesiredZ;
 };

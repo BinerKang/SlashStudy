@@ -24,5 +24,7 @@ void USlashAnimInstance::NativeUpdateAnimation(float DeltaTime)
 		this->GroundSpeed = UKismetMathLibrary::VSizeXY(SlashChrMoveComp->Velocity);
 		this->IsFalling = SlashChrMoveComp->IsFalling();
 		this->CharacterState = SlashChr->GetCharacterState();
+		this->ActionState = SlashChr->GetActionState();
+		this->DeathPose = SlashChr->GetDeathPose();
 	}
 }

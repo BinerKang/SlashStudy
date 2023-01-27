@@ -8,6 +8,7 @@
 
 class USphereComponent;
 class UNiagaraComponent;
+class UNiagaraSystem;
 
 enum class EItemState : uint8 
 {
@@ -28,6 +29,9 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	void SpawnPickupEffect();
+	void SpawnPickupSound();
 
 	// BlueprintReadWrite: Expose to Event Graph and can not private variable
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Custom|Sine Parameters") // EditAnywhere EditDefaultsOnly EditInstanceOnly
@@ -63,7 +67,13 @@ protected:
 	TObjectPtr<USphereComponent> Sphere;
 
 	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UNiagaraComponent> EmbersEffect;
+	TObjectPtr<UNiagaraComponent> ItemEffect;
+
+	UPROPERTY(EditAnywhere, Category = "Custom|Effects")
+	TObjectPtr<UNiagaraSystem> PickupEffect;
+
+	UPROPERTY(EditAnywhere, Category = "Custom|Sounds")
+	TObjectPtr<USoundBase> PickupSound;
 
 private:
 

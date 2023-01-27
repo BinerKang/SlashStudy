@@ -6,6 +6,9 @@
 #include "Components/SphereComponent.h"
 #include "Characters/SlashCharacter.h"
 #include "NiagaraComponent.h"
+#include "Interfaces/PickupInterface.h"
+#include "kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
 
 AItem::AItem()
 {
@@ -20,8 +23,8 @@ AItem::AItem()
 	Sphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	Sphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
-	EmbersEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Embers Effect"));
-	EmbersEffect->SetupAttachment(GetRootComponent());
+	ItemEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Effect"));
+	ItemEffect->SetupAttachment(GetRootComponent());
 }
 
 void AItem::BeginPlay()
@@ -52,6 +55,22 @@ void AItem::BeginPlay()
 	
 }
 
+void AItem::SpawnPickupEffect()
+{
+	if (PickupEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, PickupEffect, GetActorLocation());
+	}
+}
+
+void AItem::SpawnPickupSound()
+{
+	if (PickupSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
+	}
+}
+
 float AItem::TransformedSin()
 {
 	return Amplitude * FMath::Sin(RunningTime * TimeConstant);
@@ -64,17 +83,17 @@ float AItem::TransformedCos()
 
 void AItem::OnSphereOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (ASlashCharacter* SlashChr = Cast<ASlashCharacter>(OtherActor))
+	if (IPickupInterface* IPickup = Cast<IPickupInterface>(OtherActor))
 	{
-		SlashChr->SetOverlappingItem(this);
+		IPickup->SetOverlappingItem(this);
 	}
 }
 
 void AItem::OnSphereOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (ASlashCharacter* SlashChr = Cast<ASlashCharacter>(OtherActor))
+	if (IPickupInterface* IPickup = Cast<IPickupInterface>(OtherActor))
 	{
-		SlashChr->SetOverlappingItem(nullptr);
+		IPickup->SetOverlappingItem(nullptr);
 	}
 }
 

@@ -6,6 +6,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/AttributeComponent.h"
 #include "kismet/GameplayStatics.h"
+#include "SlashStudy/Tags.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -22,10 +23,14 @@ void ABaseCharacter::BeginPlay()
 
 void ABaseCharacter::Attack(const FInputActionValue& Value)
 {
+	// If combatTarget has dead, stop attack
+	if (CombatTarget && CombatTarget->ActorHasTag(DEAD_TAG)) CombatTarget = nullptr;
 }
 
 void ABaseCharacter::Die()
 {
+	this->Tags.Add(DEAD_TAG);
+	PlayDeathMontage();
 }
 
 void ABaseCharacter::GetHit(const FVector& ImpactPoint, AActor* Hitter)
@@ -99,7 +104,7 @@ void ABaseCharacter::DirectionalHitReact(const FVector& ImpactPoint)
 	*/
 }
 
-void ABaseCharacter::PlayHitSound(const FVector& ImpactPoint)
+void ABaseCharacter::SpawnHitParticle(const FVector& ImpactPoint)
 {
 	if (HitParticle)
 	{
@@ -107,12 +112,28 @@ void ABaseCharacter::PlayHitSound(const FVector& ImpactPoint)
 	}
 }
 
-void ABaseCharacter::SpawnHitParticle(const FVector& ImpactPoint)
+void ABaseCharacter::PlayHitSound(const FVector& ImpactPoint)
 {
 	if (HitSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, HitSound, ImpactPoint);
 	}
+}
+
+FVector ABaseCharacter::GetTranslationWarp()
+{
+	if (CombatTarget)
+	{
+		const FVector TargetToMeNormalVector = (GetActorLocation() - CombatTarget->GetActorLocation()).GetSafeNormal();
+		return CombatTarget->GetActorLocation() + TargetToMeNormalVector * WarpTargetDistance;
+	}
+	return FVector();
+}
+
+FVector ABaseCharacter::GetRotationWarp()
+{
+	if (CombatTarget) return CombatTarget->GetActorLocation();
+	return FVector();
 }
 
 void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& SectionName)
@@ -138,9 +159,28 @@ void ABaseCharacter::PlayAttackMontage()
 	PlayMontageRandomSection(AttackMontage, AttackMontageSections);	
 }
 
-int32 ABaseCharacter::PlayDeathMontage()
+void ABaseCharacter::StopAttackMontage()
 {
-	return PlayMontageRandomSection(DeathMontage, DeathMontageSections);
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Stop(.25f, AttackMontage);
+	}
+}
+
+void ABaseCharacter::PlayDodgeMontage()
+{
+	PlayMontageSection(DodgeMontage, FName("Default"));
+}
+
+void ABaseCharacter::PlayDeathMontage()
+{
+	const int32 i = PlayMontageRandomSection(DeathMontage, DeathMontageSections);
+	if (i == -1) return;
+	TEnumAsByte<EDeathPose> Pose(i);
+	if (Pose < EDeathPose::EDP_Max)
+	{
+		DeathPose = Pose;
+	}
 }
 
 void ABaseCharacter::HandleDamage(float DamageAmount)

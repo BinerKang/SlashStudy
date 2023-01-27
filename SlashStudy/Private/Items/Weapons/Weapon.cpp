@@ -51,9 +51,9 @@ void AWeapon::Equip(USceneComponent* InParent, FName InSocketName, AActor* NewOw
 	{
 		this->Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
-	if (this->EmbersEffect)
+	if (this->ItemEffect)
 	{
-		EmbersEffect->Deactivate();
+		ItemEffect->Deactivate();
 	}
 }
 
@@ -93,6 +93,7 @@ void AWeapon::BoxTrace(FHitResult& BoxHit)
 {
 	TArray<AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(this);
+	ActorsToIgnore.Add(this->Owner);
 	for (AActor* Actor : IgnoreActors)
 	{
 		ActorsToIgnore.AddUnique(Actor);

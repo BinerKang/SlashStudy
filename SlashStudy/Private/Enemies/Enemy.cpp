@@ -7,12 +7,14 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/AttributeComponent.h"
 #include "Items/Weapons/Weapon.h"
+#include "Items/Soul.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "HUD/HealthBarComponent.h"
 #include "AIController.h"
 #include "Perception/PawnSensingComponent.h"
 #include "SlashStudy/Tags.h"
 #include "SlashStudy/SocketNames.h"
+
 
 AEnemy::AEnemy()
 {
@@ -21,6 +23,7 @@ AEnemy::AEnemy()
 	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	GetMesh()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap);
 	GetMesh()->SetGenerateOverlapEvents(true);
 
@@ -58,11 +61,11 @@ void AEnemy::BeginPlay()
 	if (WeaponClass && GetWorld()) 
 	{
 		EquippedWeapon = GetWorld()->SpawnActor<AWeapon>(WeaponClass);
-		EquippedWeapon->Equip(GetMesh(), RIGHT_HAND_SOCKET, this, this);
+		EquippedWeapon->Equip(GetMesh(), WEAPON_SOCKET, this, this);
 	}
 }
 
-void AEnemy::MoveToTarget(AActor* Target, float AcceptanceRadius)
+void AEnemy::MoveToTarget(AActor* Target)
 {
 	if (!Target || !EnemyController) return;
 	FAIMoveRequest MoveRequest;
@@ -162,7 +165,7 @@ void AEnemy::OnSeePawn(APawn* Pawn)
 {
 	// If Enemy Chasing or Attacking , Do noting.
 	if (EnemyState != EEnemyState::EES_Patrolling) return;
-	if (Pawn->ActorHasTag(ENGAGEABLE_TARGET_TAG))
+	if (Pawn->ActorHasTag(ENGAGEABLE_TARGET_TAG) && !Pawn->ActorHasTag(DEAD_TAG))
 	{
 		this->CombatTarget = Pawn;
 		CheckCombatTarget();
@@ -189,9 +192,16 @@ void AEnemy::LoseInterest()
 void AEnemy::GetHit(const FVector& ImpactPoint, AActor* Hitter)
 {
 	// DRAW_SPHERE_Color(ImpactPoint, FColor::Orange);
-	Super::GetHit(ImpactPoint, Hitter);
 	ClearPatrolWaitTimer();
-	if (IsAlive()) ShowHealthBar();
+	ClearAttackTimer();
+	Super::GetHit(ImpactPoint, Hitter);
+	SetWeaponBoxCollisionEnabled(ECollisionEnabled::NoCollision);
+	StopAttackMontage();
+	if (IsAlive())
+	{
+		ShowHealthBar();
+		if (IsInsideAttackRadius()) StartAttackTimer();
+	}
 }
 
 float AEnemy::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -214,31 +224,50 @@ void AEnemy::Die()
 	SetWeaponBoxCollisionEnabled(ECollisionEnabled::NoCollision);
 	HideHealthBar();
 	this->SetLifeSpan(DeadLifeSpan);
-	PlayDeathMontage();
+	
+	if (bNeedPhysicalWhenDie)
+	{
+		GetMesh()->SetSimulatePhysics(true);
+		GetMesh()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	}
+	Super::Die();
+	
+	SpawnSoulActor();
+}
+
+void AEnemy::SpawnSoulActor()
+{
+	if (SoulClass)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			ASoul* Soul = World->SpawnActor<ASoul>(SoulClass, GetActorLocation() + FVector(0.f, 0.f, 125.f), GetActorRotation());
+			if (Soul && AttributeComponent)
+			{
+				Soul->SetSouls(AttributeComponent->GetSouls());
+				Soul->SetOwner(this);
+			}
+		}
+	}
 }
 
 void AEnemy::Attack(const FInputActionValue& Value)
 {
 	Super::Attack(Value);
-	EnemyState = EEnemyState::EES_Engaged;
-	PlayAttackMontage();
+	if (!CombatTarget)
+	{
+		GoToPatrolling();
+	}
+	else
+	{
+		EnemyState = EEnemyState::EES_Engaged;
+		PlayAttackMontage();
+	}	
 }
 
 void AEnemy::Attack()
 {
 	Attack(NULL);
-}
-
-int32 AEnemy::PlayDeathMontage()
-{
-	const int32 i = Super::PlayDeathMontage();
-	if (i == -1) return -1;
-	TEnumAsByte<EDeathPose> Pose(i);
-	if (Pose < EDeathPose::EDP_Max)
-	{
-		DeathPose = Pose;
-	}
-	return i;
 }
 
 bool AEnemy::IsInTargetRange(AActor* Target, float Radius)
