@@ -128,6 +128,7 @@ void AEnemy::CheckCombatTarget()
 {
 	if (this->CombatTarget)
 	{
+		ClearPatrolWaitTimer();
 		if (IsOutsideCombatRadius())
 		{
 			ClearAttackTimer();

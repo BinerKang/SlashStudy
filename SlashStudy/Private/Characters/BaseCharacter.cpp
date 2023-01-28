@@ -148,7 +148,7 @@ void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& Sect
 
 int32 ABaseCharacter::PlayMontageRandomSection(UAnimMontage* Montage, const TArray<FName>& SectionNames)
 {
-	if (SectionNames.Num() < 0) return -1;
+	if (SectionNames.Num() == 0) return -1;
 	int32 i = FMath::RandRange(0, SectionNames.Num() - 1);
 	PlayMontageSection(Montage, SectionNames[i]);
 	return i;
